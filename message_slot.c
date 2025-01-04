@@ -34,8 +34,10 @@ static channel_t* add_channel(message_slot_t* slot, unsigned int channel_id) {
     return new_channel;
 }
 
+
 static int device_open(struct inode* inode, struct file* file) {
     int minor = iminor(inode);
+    message_slot_t* slot;
 
     if (!slots[minor]) {
         slots[minor] = kmalloc(sizeof(message_slot_t), GFP_KERNEL);
@@ -44,9 +46,12 @@ static int device_open(struct inode* inode, struct file* file) {
             return -ENOMEM;
         }
         slots[minor]->channels = NULL;
-        slots[minor]->active_channel_id = 0;
+        slots[minor]->active_channel_id = 0;  // Initialize to 0
     }
-    file->private_data = (void*)slots[minor];
+    
+    slot = slots[minor];
+    slot->active_channel_id = 0;  // Reset for each new open
+    file->private_data = (void*)slot;
     return 0;
 }
 
@@ -75,9 +80,10 @@ static ssize_t device_write(struct file* file, const char __user* buffer, size_t
     message_slot_t* slot = (message_slot_t*)file->private_data;
     channel_t* chan;
 
-    if (slot->active_channel_id == 0) {
+    if (!slot || slot->active_channel_id == 0) {
         return -EINVAL;
     }
+
     if (length == 0 || length > MAX_MESSAGE_SIZE) {
         return -EMSGSIZE;
     }
@@ -89,33 +95,41 @@ static ssize_t device_write(struct file* file, const char __user* buffer, size_t
             return -ENOMEM;
         }
     }
+
     if (copy_from_user(chan->message, buffer, length)) {
         return -EFAULT;
     }
     chan->message_len = length;
     return length;
 }
-
 static ssize_t device_read(struct file* file, char __user* buffer, size_t length, loff_t* offset) {
     message_slot_t* slot = (message_slot_t*)file->private_data;
     channel_t* chan;
 
-    if (slot->active_channel_id == 0) {
+    // Check slot and channel validity first
+    if (!slot || slot->active_channel_id == 0) {
         return -EINVAL;
     }
+
     chan = find_channel(slot, slot->active_channel_id);
-    if (!chan || chan->message_len == 0) {
+    if (!chan) {
+        return -EINVAL;
+    }
+
+    if (chan->message_len == 0) {
         return -EWOULDBLOCK;
     }
+
     if (length < chan->message_len) {
         return -ENOSPC;
     }
+
     if (copy_to_user(buffer, chan->message, chan->message_len)) {
         return -EFAULT;
     }
+
     return chan->message_len;
 }
-
 static struct file_operations Fops = {
     .owner = THIS_MODULE,
     .open = device_open,
