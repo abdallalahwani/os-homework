@@ -1,4 +1,4 @@
-/* message_slot.h code */
+
 #ifndef MESSAGE_SLOT_H
 #define MESSAGE_SLOT_H
 
@@ -23,4 +23,4 @@ typedef struct message_slot {
     unsigned int active_channel_id;
 } message_slot_t;
 
-#endif /* MESSAGE_SLOT_H */
+#endif // MESSAGE_SLOT_H

@@ -1,4 +1,4 @@
-/* message_slot.c code */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -46,11 +46,11 @@ static int device_open(struct inode* inode, struct file* file) {
             return -ENOMEM;
         }
         slots[minor]->channels = NULL;
-        slots[minor]->active_channel_id = 0;  // Initialize to 0
+        slots[minor]->active_channel_id = 0;  
     }
     
     slot = slots[minor];
-    slot->active_channel_id = 0;  // Reset for each new open
+    slot->active_channel_id = 0; 
     file->private_data = (void*)slot;
     return 0;
 }
@@ -63,6 +63,7 @@ static long device_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
     message_slot_t* slot = (message_slot_t*)file->private_data;
     unsigned int channel_id;
 
+    
     if (cmd != MSG_SLOT_CHANNEL) {
         return -EINVAL;
     }
@@ -106,7 +107,6 @@ static ssize_t device_read(struct file* file, char __user* buffer, size_t length
     message_slot_t* slot = (message_slot_t*)file->private_data;
     channel_t* chan;
 
-    // Check slot and channel validity first
     if (!slot || slot->active_channel_id == 0) {
         return -EINVAL;
     }
